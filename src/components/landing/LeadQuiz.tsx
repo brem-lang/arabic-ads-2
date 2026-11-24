@@ -28,6 +28,7 @@ import {
 } from "@/lib/lead-schema";
 import { MARKETS, type MarketId } from "@/lib/markets";
 import { submitLead } from "@/lib/submit-lead";
+import { trackPixel } from "@/lib/pixel";
 
 type Question = {
   field: string;
@@ -245,6 +246,7 @@ export function LeadQuiz() {
         website,
         timing,
       });
+      if (res.ok) trackPixel("Lead");
       if (res.ok && res.autologinUrl) {
         // Keep the loading overlay up (at 100%) while the browser navigates away.
         setRedirecting(true);

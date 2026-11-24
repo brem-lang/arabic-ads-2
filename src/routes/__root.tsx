@@ -11,6 +11,9 @@ import {
 import type { ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import { metaPixelId, metaPixelScript } from "../lib/pixel";
+
+const pixelId = metaPixelId();
 
 function NotFoundComponent() {
   return (
@@ -94,6 +97,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
+    // Meta Pixel (PageView); left out entirely when VITE_META_PIXEL_ID is not set.
+    scripts: pixelId ? [{ children: metaPixelScript(pixelId) }] : [],
   }),
   shellComponent: RootShell,
   component: RootComponent,
