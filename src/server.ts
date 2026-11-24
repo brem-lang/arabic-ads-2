@@ -2,7 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
-import { geoDecision, isPagePath } from "./lib/geo";
+import { canonicalPath, isPagePath } from "./lib/paths";
 import { LEAD_PATH, handleSubmitLead } from "./lib/lead-proxy.server";
 import { isRateLimited, type RateLimitBinding } from "./lib/rate-limit";
 
@@ -48,27 +48,8 @@ function isH3SwallowedErrorBody(body: string): boolean {
 }
 
 type CloudflareRequest = Request & {
-  cf?: { country?: string };
   runtime?: { cloudflare?: { env?: { PAGE_RATE_LIMITER?: RateLimitBinding } } };
 };
-
-const DEV_GEO_COOKIE = "dev_geo";
-
-/**
- * Visitor country from Cloudflare (request.cf, or the CF-IPCountry header).
- * Local dev has neither, so there `?geo=US` picks a country (a cookie remembers it) and the
- * default is SA.
- */
-function visitorCountry(request: CloudflareRequest, url: URL): string | null {
-  if (import.meta.env.DEV) {
-    const fromQuery = url.searchParams.get("geo");
-    if (fromQuery && /^[A-Za-z]{2}$/.test(fromQuery)) return fromQuery.toUpperCase();
-    const fromCookie = request.headers.get("cookie")?.match(/(?:^|;\s*)dev_geo=([A-Za-z]{2})/)?.[1];
-    if (fromCookie) return fromCookie.toUpperCase();
-    return "SA";
-  }
-  return request.cf?.country ?? request.headers.get("cf-ipcountry");
-}
 
 function htmlResponse(
   status: number,
@@ -89,7 +70,7 @@ function htmlResponse(
   );
 }
 
-/** Rate limit and Saudi-only country gate for the landing page; null lets the request through. */
+/** Rate limit and old-URL redirects for the landing page; null lets the request through. */
 async function guardPage(request: CloudflareRequest): Promise<Response | null> {
   const url = new URL(request.url);
   if (!isPagePath(url.pathname)) return null;
@@ -105,33 +86,15 @@ async function guardPage(request: CloudflareRequest): Promise<Response | null> {
     );
   }
 
-  const country = visitorCountry(request, url);
-  const decision = geoDecision(url.pathname, country);
-  if (decision.action === "serve") return null;
-  if (decision.action === "block") {
-    return htmlResponse(
-      403,
-      "Not available in your country",
-      "This page is only available to visitors in Saudi Arabia. · هذه الصفحة متاحة فقط للزوار من المملكة العربية السعودية.",
-    );
-  }
+  const target = canonicalPath(url.pathname);
+  if (target === url.pathname) return null;
 
   // Keep the query string (click_id and other tracking) across the redirect.
   const headers: Record<string, string> = {
-    location: decision.to + url.search,
+    location: target + url.search,
     "cache-control": "no-store",
   };
   return new Response(null, { status: 302, headers });
-}
-
-/** Dev only: remember `?geo=XX` in a cookie so later page loads keep that country. */
-function rememberDevGeo(request: Request, response: Response): Response {
-  if (!import.meta.env.DEV) return response;
-  const geo = new URL(request.url).searchParams.get("geo");
-  if (!geo || !/^[A-Za-z]{2}$/.test(geo)) return response;
-  const copy = new Response(response.body, response);
-  copy.headers.append("set-cookie", `${DEV_GEO_COOKIE}=${geo.toUpperCase()}; Path=/; SameSite=Lax`);
-  return copy;
 }
 
 export default {
@@ -140,11 +103,11 @@ export default {
       if (new URL(request.url).pathname === LEAD_PATH) return await handleSubmitLead(request);
 
       const blocked = await guardPage(request as CloudflareRequest);
-      if (blocked) return rememberDevGeo(request, blocked);
+      if (blocked) return blocked;
 
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return rememberDevGeo(request, await normalizeCatastrophicSsrResponse(response));
+      return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {

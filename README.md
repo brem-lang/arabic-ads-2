@@ -1,6 +1,6 @@
 # Arabic Trading Spark
 
-Arabic (RTL) lead-generation landing page for Saudi Arabia only, at `/`, with a short quiz and a validated lead form. Visitors from other countries get a 403. Built with TanStack Start, React, Tailwind and Vite, run as a Node server behind nginx.
+Arabic (RTL) lead-generation landing page for Saudi Arabia, at `/`, with a short quiz and a validated lead form (Saudi +966 mobiles only). The page itself is open to visitors from any country. Built with TanStack Start, React, Tailwind and Vite, run as a Node server behind nginx.
 
 ## Development
 
