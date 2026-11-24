@@ -59,9 +59,6 @@ function describeField(k: TimedField, f: FieldTiming): string {
   const at = f.last_input_ms !== undefined ? ` at ${duration(f.last_input_ms)}` : "";
   if (k === "consent") return n > 1 ? `clicked ${times(n)}, last${at}` : `ticked${at}`;
   if (k === "countryCode") return `changed ${times(n)}, last${at}`;
-  // Quiz question: answered, or skipped (a skip clears an earlier answer).
-  if (f.skipped_ms !== undefined && (f.last_input_ms ?? -1) < f.skipped_ms)
-    return `skipped at ${duration(f.skipped_ms)}`;
   return n > 1 ? `answered, changed answer ${times(n - 1)}, last${at}` : `answered${at}`;
 }
 
@@ -82,7 +79,6 @@ export function timingReport(t: FormTiming): TimingReport {
     if (ms !== undefined) events.push({ ms, text });
   };
   add(t.form_loaded_ms, "Quiz loaded");
-  add(t.skip_all_click_ms, 'Clicked "Skip all questions"');
   add(t.contact_form_shown_ms, "Reached the contact form");
 
   const fields: Record<string, string> = {};
@@ -91,10 +87,8 @@ export function timingReport(t: FormTiming): TimingReport {
     if (!f) continue;
     fields[LABELS[k]] = describeField(k, f);
     if (TEXT_FIELDS.includes(k)) add(f.first_focus_ms ?? f.first_input_ms, `Started ${LABELS[k]}`);
-    else if (QUESTIONS.includes(k)) {
-      add(f.last_input_ms, `Answered ${LABELS[k]}`);
-      add(f.skipped_ms, `Skipped ${LABELS[k]}`);
-    } else if (k === "consent") add(f.last_input_ms, `Ticked ${LABELS[k]}`);
+    else if (QUESTIONS.includes(k)) add(f.last_input_ms, `Answered ${LABELS[k]}`);
+    else if (k === "consent") add(f.last_input_ms, `Ticked ${LABELS[k]}`);
     else add(f.last_input_ms, `Changed ${LABELS[k]}`);
   }
   // Untouched contact fields are listed; untouched questions are left out, since most markets

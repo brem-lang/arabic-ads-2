@@ -1,19 +1,29 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { LeadQuiz } from "@/components/landing/LeadQuiz";
+import { QUIZ } from "@/lib/lead-schema";
 
-describe("LeadQuiz optional questions", () => {
-  it("marks questions optional and skips one at a time", () => {
+afterEach(() => vi.useRealTimers());
+
+describe("LeadQuiz questions", () => {
+  it("has no skip buttons", () => {
     render(<LeadQuiz />);
-    expect(screen.getByText("السؤال 1 من 5 · اختياري")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /^تخطي$/ }));
-    expect(screen.getByText("السؤال 2 من 5 · اختياري")).toBeInTheDocument();
+    expect(screen.getByText("السؤال 1 من 5")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /تخطي/ })).not.toBeInTheDocument();
   });
 
-  it("jumps straight to the contact form with Skip all", () => {
+  it("reaches the contact form only by answering every question", () => {
+    vi.useFakeTimers();
     render(<LeadQuiz />);
-    fireEvent.click(screen.getByRole("button", { name: "تخطي كل الأسئلة" }));
+    const count = Object.keys(QUIZ.sa).length;
+    for (let i = 0; i < count; i++) {
+      // The first option of each question.
+      const option = screen
+        .getAllByRole("button")
+        .find((b) => b.className.includes("rounded-2xl"))!;
+      fireEvent.click(option);
+      act(() => vi.advanceTimersByTime(300));
+    }
     expect(screen.getByText("أين نرسل خطتك الشخصية؟")).toBeInTheDocument();
     // Saudi dial code only: shown as a fixed prefix, not a choice.
     expect(screen.getByLabelText("رمز الدولة")).toHaveTextContent("+966");

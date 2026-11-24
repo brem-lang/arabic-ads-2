@@ -131,9 +131,6 @@ const t = {
   encrypted: "بياناتك مشفّرة",
   noShare: "لا نشارك بياناتك",
   back: "رجوع",
-  skip: "تخطي",
-  skipAll: "تخطي كل الأسئلة",
-  optional: "اختياري",
   failSave: "تعذّر إرسال طلبك، حاول مرة أخرى",
   failCheck: "تحقق من بياناتك وحاول مرة أخرى",
 };
@@ -194,13 +191,6 @@ export function LeadQuiz() {
     if (isForm) timed().contactFormShown();
   }, [isForm]);
 
-  /** Leave this question unanswered (clearing any earlier answer) and move on. */
-  const skip = (field: string) => {
-    if (isTimedField(field)) timed().skip(field);
-    setAnswers(({ [field]: _skipped, ...rest }) => rest);
-    setStep((s) => Math.min(s + 1, QUESTIONS.length));
-  };
-
   const choose = (field: string, value: QuizValue) => {
     if (isTimedField(field)) timed().input(field);
     setAnswers((a) => ({ ...a, [field]: value }));
@@ -236,7 +226,6 @@ export function LeadQuiz() {
     const e = validate();
     setErrors(e);
     if (Object.keys(e).length) return;
-    // Questions are optional: unanswered ones are simply left out of the lead.
     setLoading(true);
     try {
       const res = await submitLead({
@@ -305,11 +294,7 @@ export function LeadQuiz() {
       <div className="relative mb-8">
         <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
           <span>
-            {done
-              ? t.done
-              : isForm
-                ? t.lastStep
-                : `${t.questionOf(step + 1, QUESTIONS.length)} · ${t.optional}`}
+            {done ? t.done : isForm ? t.lastStep : t.questionOf(step + 1, QUESTIONS.length)}
           </span>
           <span className="font-bold text-primary">{progress}%</span>
         </div>
@@ -571,8 +556,8 @@ export function LeadQuiz() {
                 );
               })}
             </div>
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm">
-              {step > 0 ? (
+            {step > 0 && (
+              <div className="mt-6 flex items-center text-sm">
                 <button
                   type="button"
                   onClick={() => setStep((s) => s - 1)}
@@ -580,29 +565,8 @@ export function LeadQuiz() {
                 >
                   <Back className="h-4 w-4" /> {t.back}
                 </button>
-              ) : (
-                <span />
-              )}
-              <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    timed().skipAllClick();
-                    setStep(QUESTIONS.length);
-                  }}
-                  className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                >
-                  {t.skipAll}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => skip(q.field)}
-                  className="flex items-center gap-1 font-semibold text-primary hover:text-primary/80"
-                >
-                  {t.skip} <Forward className="h-4 w-4" />
-                </button>
               </div>
-            </div>
+            )}
           </div>
         ) : null}
       </div>

@@ -13,8 +13,6 @@ function sampleTiming() {
   timer.formLoaded();
   t = 3_000;
   timer.input("is_saudi_citizen");
-  t = 5_000;
-  timer.skip("investment_amount");
   t = 6_000;
   timer.contactFormShown();
   t = 7_000;
@@ -38,7 +36,7 @@ function sampleTiming() {
 }
 
 describe("createFormTimer", () => {
-  it("records per-field focus, input, skip and click times", () => {
+  it("records per-field focus, input and click times", () => {
     const timing = sampleTiming();
     expect(timingSchema.safeParse(timing).success).toBe(true);
     expect(timing).toMatchObject({
@@ -57,7 +55,7 @@ describe("createFormTimer", () => {
       last_input_ms: 8_000,
       input_count: 2,
     });
-    expect(timing.fields.investment_amount).toEqual({ skipped_ms: 5_000 });
+    expect(timing.fields.investment_amount).toBeUndefined();
   });
 
   it("covers every quiz question of every market", () => {
@@ -79,7 +77,7 @@ describe("timingReport", () => {
     expect(r.submit_clicks).toBe(2);
     expect(r.fields["Email"]).toBe("3.0s in the field, 2 changes, typed");
     expect(r.fields["Q Saudi citizen"]).toBe("answered at 3.0s");
-    expect(r.fields["Q Investment amount"]).toBe("skipped at 5.0s");
+    expect(r.fields["Q Investment amount"]).toBeUndefined();
     expect(r.fields["Phone"]).toBe("not touched");
     expect(r.fields["Q Start time"]).toBeUndefined();
     expect(r.steps[0]).toBe("0.0s - Opened the page");

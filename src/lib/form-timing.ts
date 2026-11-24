@@ -46,8 +46,6 @@ const fieldTimingSchema = z.object({
   last_input_ms: ms.optional(),
   /** Number of value changes (keystrokes, clicks). */
   input_count: count.optional(),
-  /** Quiz questions only: last time "Skip" was clicked on it. */
-  skipped_ms: ms.optional(),
 });
 export type FieldTiming = z.infer<typeof fieldTimingSchema>;
 
@@ -61,8 +59,6 @@ export const timingSchema = z.object({
   utc_offset_min: z.number().int().min(-900).max(900).optional(),
   /** The quiz appeared. */
   form_loaded_ms: ms.optional(),
-  /** "Skip all questions" clicked. */
-  skip_all_click_ms: ms.optional(),
   /** The contact form (last step) first appeared. */
   contact_form_shown_ms: ms.optional(),
   /** Submit button: first and latest click, and how many times. */
@@ -86,7 +82,6 @@ export function createFormTimer() {
   const fields: Partial<Record<TimedField, FieldTiming>> = {};
   const focusedSince: Partial<Record<TimedField, number>> = {};
   let formLoaded: number | undefined;
-  let skipAll: number | undefined;
   let contactShown: number | undefined;
   let firstSubmit: number | undefined;
   let submitClicks = 0;
@@ -98,12 +93,6 @@ export function createFormTimer() {
     },
     contactFormShown() {
       contactShown ??= now();
-    },
-    skipAllClick() {
-      skipAll ??= now();
-    },
-    skip(k: TimedField) {
-      field(k).skipped_ms = now();
     },
     focus(k: TimedField) {
       const t = now();
@@ -142,7 +131,6 @@ export function createFormTimer() {
         timezone: tz,
         utc_offset_min: -new Date().getTimezoneOffset(),
         form_loaded_ms: formLoaded,
-        skip_all_click_ms: skipAll,
         contact_form_shown_ms: contactShown,
         first_submit_click_ms: firstSubmit,
         submit_click_ms: t,
